@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+<head>
+  <style type="text/css">
+    html { height: 100% }
+    body { height: 100%; margin: 0px; padding: 0px; position: relative; font-family: sans-serif; }
+    #map_canvas { height: 100% }
+    #area {
+      position: absolute;
+      left: 1rem;
+      top: 3rem;
+      background: #fff;
+      padding: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="map_canvas" style="width:100%; height:100%"></div>
+  <div id="area">
+    Mikä tämä <b>tie</b> on?
+    <input type="text" /> <input type="button" value="oisko" onclick="streetTest()" />
+  </div>
+
+  <script type="text/javascript" src="http://maps.google.com/maps/api/js?key=AIzaSyBxP7Pyt8cMJGPns8k3F8kiqx8osXnCyIw"></script>
+  <script>
+  const roads = ["ukkoherrantie",
+  "lapinkävijäntie",
+  "Poromiehentie,96200",
+  "kansankatu",
+  "Korkalonkatu,Korvanniemi",
+  "Hallituskatu,Ratantaus,96200",
+  "kivikatu",
+  "myllärintie",
+  "kivikaudentie",
+  "kuukkelintie",
+  "kiekerötie",
+  "suopunki",
+  "matkajängäntie",
+  "reissumiehentie",
+  "kympintie",
+  "kairatie",
+  "kiertotie",
+  "eteläranta",
+  "alakorkalontie",
+  "Väylätie,Rantavitikka",
+  "Väinämöisentie,Viirinkangas",
+  "oijustie",
+  "Teollisuustie,Teollisuuskylä,96320",
+  "juurakkotie",
+  "hillerintie",
+  "vaaranlammentie",
+  "louhikkotie",
+  "revontultentie",
+  "Talvitie,+Ylikylä",
+  "vennivaarantie",
+  "keskusväylä",
+  "yhdysväylä",
+  "villenväylä"
+  ];
+
+  const xmlCall = function(url) {
+    return fetch(url).then((res) => res.text());
+  };
+
+  var streetPath, street;
+  var stylesOff = 
+  [{
+    elementType: 'labels',
+    stylers: [{visibility: 'off'}]
+  }];
+
+  var myOptions = {
+    mapTypeId: google.maps.MapTypeId.ROADMAP,
+    styles: stylesOff,
+    zoom: 13
+  };
+
+  var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+  map.setCenter({lat: 66.5, lng: 25.724999});
+
+  function loadMap() {
+    street = roads[Math.floor((Math.random() * roads.length))];
+
+    xmlCall("https://nominatim.openstreetmap.org/search.php?q=" + street + ",+Rovaniemi&polygon_geojson=1&viewbox=&format=json").then((data) => {
+      const map = JSON.parse(data);
+
+      var coordinates = map[0].geojson.coordinates;
+
+      if(map[1] && map[1].importance >= map[0].importance) { // bug fix to some streets
+        coordinates = map[1].geojson.coordinates;
+      }
+
+      var pathCoords = [];
+      coordinates.forEach(function(i) {
+        pathCoords.push({lat: i[1], lng: i[0]});
+      });
+
+      initMap(pathCoords);
+    }).catch((error) => {
+      console.log(error);
+    });
+  }
+
+  function initMap(pathCoords) {
+    streetPath = new google.maps.Polyline({
+      path: pathCoords,
+      strokeColor: '#FF0000',
+      strokeOpacity: 1.0,
+      strokeWeight: 7
+    });
+    map.setCenter({lat: pathCoords[0].lat, lng: pathCoords[0].lng})
+
+    streetPath.setMap(map);
+  }
+
+  function streetTest() {
+    var input = document.querySelectorAll('input[type="text"]')[0].value.toLowerCase();
+    streetPath.setOptions({strokeOpacity: 0.5});
+    map.setZoom(14);
+
+    if(street.indexOf(input) !== -1 && input != "") {
+      document.getElementById('area').innerHTML = '<b>Hyvä! Oikein meni</b>. <a href="#" onclick="location.reload()">Päivitä</a>';
+    } else {
+      document.getElementById('area').innerHTML = '<i>Höh! Oikea tien nimi olisi ollut</i> <b>' + street.split(',')[0] + '</b>. <a href="#" onclick="location.reload()">Päivitä</a>';
+    }
+  }
+  loadMap();
+  </script>
+</body>
+</html>
